@@ -78,16 +78,3 @@ curl "http://localhost:8080/api/v1/rewards/1?start=2024-01-01&end=2024-03-31"
 - H2 console: `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:mem:rewards`)
 - Health:     `http://localhost:8080/actuator/health`
 
-## Tests
-```bash
-mvn test
-```
-
-## Production Notes
-- Swap H2 for Postgres/MySQL by changing `spring.datasource.*` and adding the
-  driver dependency. Disable `spring.sql.init` and use Flyway/Liquibase for
-  schema migrations.
-- Disable `h2-console` and `spring.jpa.hibernate.ddl-auto` in production
-  profiles (`application-prod.yml`).
-- Add Spring Security for authentication and tighten actuator exposure.
-- Container image runs as non-root user `app`.
