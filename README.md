@@ -31,6 +31,8 @@ src/main/resources
   └── logback-spring.xml
 Dockerfile
 pom.xml
+start.sh         Launch the service (Docker or Maven)
+run-demo.sh      Build, run, hit the API, save responses to ./examples/
 ```
 
 ## Seed Data
@@ -41,14 +43,21 @@ when the `prod` or `test` profile is active, or when data already exists.
 
 ## Run
 
+The quickest path is the bundled launcher:
+
 ```bash
-./mvnw spring-boot:run        # or: mvn spring-boot:run
+./start.sh           # auto: Docker if the daemon is running, else Maven
+./start.sh docker    # force Docker (build image + run container)
+./start.sh mvn       # force Maven (./mvnw spring-boot:run)
 ```
 
-Service starts on `http://localhost:8080`.
+Overrides: `PORT`, `IMAGE`, `CONTAINER`. Service listens on
+`http://localhost:8080` by default.
 
-### Docker
+### Manual alternatives
 ```bash
+./mvnw spring-boot:run
+# or
 docker build -t rewards-service:1.0.0 .
 docker run --rm -p 8080:8080 rewards-service:1.0.0
 ```
@@ -57,6 +66,16 @@ runs as the non-root user `app`. Pass JVM flags via `JAVA_OPTS`, e.g.:
 ```bash
 docker run --rm -p 8080:8080 -e JAVA_OPTS="-Xmx256m" rewards-service:1.0.0
 ```
+
+### Demo script
+[run-demo.sh](run-demo.sh) builds the image, starts a container, waits for
+`/actuator/health`, exercises every endpoint, and writes the responses (plus a
+Markdown summary) into `./examples/`:
+```bash
+./run-demo.sh                  # cleans up the container on exit
+KEEP_RUNNING=1 ./run-demo.sh   # leave the container up afterwards
+```
+Requires `docker` and `curl`; uses `jq` for pretty JSON if available.
 
 ## REST API
 
@@ -100,3 +119,24 @@ Key settings in [application.yml](src/main/resources/application.yml):
 - `spring.datasource.url`: H2 in-memory (`jdbc:h2:mem:rewards`)
 - `spring.jpa.hibernate.ddl-auto`: `create-drop`
 - `management.endpoints.web.exposure.include`: `health,info,metrics`
+
+### Tunable application properties
+All values below are overridable via environment variables (or any standard
+Spring property source).
+
+| Property | Env var | Default | Purpose |
+|---|---|---|---|
+| `rewards.default-window-months` | `REWARDS_DEFAULT_WINDOW_MONTHS` | `3` | Months back used when `start`/`end` are omitted. |
+| `seeder.start-date` | `SEEDER_START_DATE` | `2024-11-01` | First date of seeded transactions. |
+| `seeder.end-date` | `SEEDER_END_DATE` | `2026-05-06` | Last date of seeded transactions. |
+| `seeder.random-seed` | `SEEDER_RANDOM_SEED` | `42` | RNG seed (deterministic data). |
+| `seeder.min-transactions-per-customer` | `SEEDER_MIN_TX` | `15` | Lower bound of transactions per customer. |
+| `seeder.max-transactions-per-customer` | `SEEDER_MAX_TX` | `40` | Upper bound of transactions per customer. |
+
+Example (Docker):
+```bash
+docker run --rm -p 8080:8080 \
+  -e REWARDS_DEFAULT_WINDOW_MONTHS=6 \
+  -e SEEDER_RANDOM_SEED=123 \
+  rewards-service:1.0.0
+```
