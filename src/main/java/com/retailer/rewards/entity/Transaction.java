@@ -20,7 +20,10 @@ import java.time.LocalDate;
 
 @Entity
 @Table(name = "transactions", indexes = {
-        @Index(name = "idx_tx_customer_date", columnList = "customer_id,transaction_date")
+        // Supports the per-customer endpoint: WHERE customer_id = ? AND transaction_date BETWEEN ? AND ?
+        @Index(name = "idx_tx_customer_date", columnList = "customer_id,transaction_date"),
+        // Supports the all-customers endpoint: WHERE transaction_date BETWEEN ? AND ? GROUP BY customer_id, ...
+        @Index(name = "idx_tx_date_customer", columnList = "transaction_date,customer_id")
 })
 @Getter
 @Setter

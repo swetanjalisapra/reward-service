@@ -4,7 +4,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import java.time.LocalDate;
 import java.time.Instant;
 import java.util.Map;
 
@@ -19,6 +21,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleBadRequest(IllegalArgumentException ex) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, Object>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        if (ex.getRequiredType() != null && LocalDate.class.isAssignableFrom(ex.getRequiredType())) {
+            String message = String.format(
+                    "Invalid value '%s' for parameter '%s'. Date must be in 'YYYY-MM-DD' format (e.g. 2026-01-31).",
+                    ex.getValue(), ex.getName());
+            return build(HttpStatus.BAD_REQUEST, message);
+        }
+        return build(HttpStatus.BAD_REQUEST,
+                String.format("Invalid value '%s' for parameter '%s'.", ex.getValue(), ex.getName()));
     }
 
     @ExceptionHandler(Exception.class)
