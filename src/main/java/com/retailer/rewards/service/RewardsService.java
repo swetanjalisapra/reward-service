@@ -5,8 +5,8 @@ import com.retailer.rewards.exception.CustomerNotFoundException;
 import com.retailer.rewards.repository.CustomerMonthlyPoints;
 import com.retailer.rewards.repository.CustomerRepository;
 import com.retailer.rewards.repository.TransactionRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,16 +17,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-//Service Layer- Response formation and validations 
+//Service Layer- Response formation and validations
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class RewardsService {
 
-    private static final int DEFAULT_WINDOW_MONTHS = 3;
-
     private final TransactionRepository transactionRepository;
     private final CustomerRepository customerRepository;
+    private final int defaultWindowMonths;
+
+    public RewardsService(TransactionRepository transactionRepository,
+                          CustomerRepository customerRepository,
+                          @Value("${rewards.default-window-months:3}") int defaultWindowMonths) {
+        this.transactionRepository = transactionRepository;
+        this.customerRepository = customerRepository;
+        this.defaultWindowMonths = defaultWindowMonths;
+    }
 
     @Transactional(readOnly = true)
     public List<CustomerRewardsResponse> getRewards(LocalDate startDate, LocalDate endDate) {
@@ -118,7 +124,8 @@ public class RewardsService {
     private DateRange resolveRange(LocalDate startDate, LocalDate endDate) {
         if (startDate == null ^ endDate == null) {
             throw new IllegalArgumentException(
-                    "Both 'start' and 'end' must be provided together, or omit both to use the default last 3 months.");
+                    "Both 'start' and 'end' must be provided together, or omit both to use the default last "
+                            + defaultWindowMonths + " months.");
         }
         if (startDate != null) {
             if (endDate.isBefore(startDate)) {
@@ -127,6 +134,6 @@ public class RewardsService {
             return new DateRange(startDate, endDate);
         }
         LocalDate today = LocalDate.now();
-        return new DateRange(today.minusMonths(DEFAULT_WINDOW_MONTHS).withDayOfMonth(1), today);
+        return new DateRange(today.minusMonths(defaultWindowMonths).withDayOfMonth(1), today);
     }
 }

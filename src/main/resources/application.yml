@@ -35,3 +35,16 @@ management:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
+# Application-specific tunables. Override via env vars, e.g.
+#   REWARDS_DEFAULT_WINDOW_MONTHS=6
+#   SEEDER_START_DATE=2025-01-01
+rewards:
+  default-window-months: ${REWARDS_DEFAULT_WINDOW_MONTHS:3}
+
+seeder:
+  start-date: ${SEEDER_START_DATE:2024-11-01}
+  end-date: ${SEEDER_END_DATE:2026-05-06}
+  random-seed: ${SEEDER_RANDOM_SEED:42}
+  min-transactions-per-customer: ${SEEDER_MIN_TX:15}
+  max-transactions-per-customer: ${SEEDER_MAX_TX:40}

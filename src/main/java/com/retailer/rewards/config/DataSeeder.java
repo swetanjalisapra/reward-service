@@ -4,8 +4,8 @@ import com.retailer.rewards.entity.Customer;
 import com.retailer.rewards.entity.Transaction;
 import com.retailer.rewards.repository.CustomerRepository;
 import com.retailer.rewards.repository.TransactionRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -27,13 +27,8 @@ import java.util.Random;
  */
 @Component
 @Profile("!prod & !test")
-@RequiredArgsConstructor
 @Slf4j
 public class DataSeeder implements CommandLineRunner {
-
-    private static final LocalDate START_DATE = LocalDate.of(2024, 11, 1);
-    private static final LocalDate END_DATE = LocalDate.of(2026, 5, 6);
-    private static final long SEED = 42L; // deterministic data across runs
 
     private static final List<String> CUSTOMER_NAMES = List.of(
             "Alice Johnson", "Bob Smith", "Carol Davis", "David Wilson", "Eve Martinez",
@@ -44,6 +39,27 @@ public class DataSeeder implements CommandLineRunner {
 
     private final CustomerRepository customerRepository;
     private final TransactionRepository transactionRepository;
+    private final LocalDate startDate;
+    private final LocalDate endDate;
+    private final long randomSeed;
+    private final int minTransactionsPerCustomer;
+    private final int maxTransactionsPerCustomer;
+
+    public DataSeeder(CustomerRepository customerRepository,
+                      TransactionRepository transactionRepository,
+                      @Value("${seeder.start-date:2024-11-01}") LocalDate startDate,
+                      @Value("${seeder.end-date:2026-05-06}") LocalDate endDate,
+                      @Value("${seeder.random-seed:42}") long randomSeed,
+                      @Value("${seeder.min-transactions-per-customer:15}") int minTransactionsPerCustomer,
+                      @Value("${seeder.max-transactions-per-customer:40}") int maxTransactionsPerCustomer) {
+        this.customerRepository = customerRepository;
+        this.transactionRepository = transactionRepository;
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.randomSeed = randomSeed;
+        this.minTransactionsPerCustomer = minTransactionsPerCustomer;
+        this.maxTransactionsPerCustomer = maxTransactionsPerCustomer;
+    }
 
     @Override
     @Transactional
@@ -53,20 +69,20 @@ public class DataSeeder implements CommandLineRunner {
             return;
         }
 
-        Random random = new Random(SEED);
+        Random random = new Random(randomSeed);
         List<Customer> customers = new ArrayList<>(CUSTOMER_NAMES.size());
         for (String name : CUSTOMER_NAMES) {
             customers.add(customerRepository.save(Customer.builder().name(name).build()));
         }
 
-        long totalDays = ChronoUnit.DAYS.between(START_DATE, END_DATE);
+        long totalDays = ChronoUnit.DAYS.between(startDate, endDate);
         List<Transaction> transactions = new ArrayList<>();
 
+        int txRange = Math.max(1, maxTransactionsPerCustomer - minTransactionsPerCustomer + 1);
         for (Customer customer : customers) {
-            // Each customer gets 15-40 transactions across the window.
-            int txCount = 15 + random.nextInt(26);
+            int txCount = minTransactionsPerCustomer + random.nextInt(txRange);
             for (int i = 0; i < txCount; i++) {
-                LocalDate date = START_DATE.plusDays(random.nextInt((int) totalDays + 1));
+                LocalDate date = startDate.plusDays(random.nextInt((int) totalDays + 1));
                 BigDecimal amount = randomAmount(random);
                 transactions.add(Transaction.builder()
                         .customer(customer)
@@ -79,7 +95,7 @@ public class DataSeeder implements CommandLineRunner {
         transactionRepository.saveAll(transactions);
 
         log.info("DataSeeder: inserted {} customers and {} transactions ({} .. {}).",
-                customers.size(), transactions.size(), START_DATE, END_DATE);
+                customers.size(), transactions.size(), startDate, endDate);
     }
 
     /**
