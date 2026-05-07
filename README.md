@@ -29,6 +29,14 @@ src/main/java/com/retailer/rewards
 src/main/resources
   ├── application.yml
   └── logback-spring.xml
+src/test/java/com/retailer/rewards
+  ├── RewardsServiceApplicationTests.java   Context smoke test
+  ├── controller/RewardsControllerTest.java   @WebMvcTest + MockMvc
+  ├── service/RewardsServiceTest.java         Mockito unit tests
+  ├── exception/GlobalExceptionHandlerTest.java
+  └── repository/TransactionRepositoryTest.java   @DataJpaTest against H2
+src/test/resources
+  └── application-test.yml
 Dockerfile
 pom.xml
 start.sh         Launch the service (Docker or Maven)
@@ -140,3 +148,36 @@ docker run --rm -p 8080:8080 \
   -e SEEDER_RANDOM_SEED=123 \
   rewards-service:1.0.0
 ```
+
+## Tests
+
+The project ships with **29 unit/integration tests** covering the service,
+controller, exception handler, and repository layers (JUnit 5, Mockito,
+AssertJ, Spring `MockMvc`, `@DataJpaTest` against H2). The `DataSeeder` is
+disabled under the `test` profile.
+
+| Suite | Type | Coverage |
+|---|---|---|
+| `RewardsServiceTest` | Mockito unit | Grouping, totals, default window, null/zero points, date-range validation, customer-not-found, empty results. |
+| `RewardsControllerTest` | `@WebMvcTest` + MockMvc | Endpoint happy paths, query-param binding, 404/400 mapping, malformed date, non-numeric customerId. |
+| `GlobalExceptionHandlerTest` | Plain unit | 404, 400, friendly `LocalDate` type-mismatch message, generic mismatch, 500 fallback, null-message handling. |
+| `TransactionRepositoryTest` | `@DataJpaTest` (H2) | JPQL aggregation across customers/months, range exclusion, per-customer filter, empty result. |
+| `RewardsServiceApplicationTests` | `@SpringBootTest` | Application context loads. |
+
+### Run with Maven
+```bash
+./mvnw test
+# or
+mvn test
+```
+
+### Run with Docker (no local Maven required)
+```bash
+docker run --rm \
+  -v "$PWD":/workspace -v "$HOME/.m2":/root/.m2 \
+  -w /workspace maven:3.9-eclipse-temurin-17 \
+  mvn test
+```
+
+Test reports are written to `target/surefire-reports/`.
+
